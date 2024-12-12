@@ -4,7 +4,6 @@
   
   export let data: PageData
   let materials = [...data.materials];
-  $: materials = [...data.materials];
 
   // New material  
   let newMaterial = {
