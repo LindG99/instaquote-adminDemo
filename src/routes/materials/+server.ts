@@ -13,7 +13,7 @@ export const GET: RequestHandler = async ({ locals: { supabase } }) => {
   }
 
   return json({ success: true, materials: data });
-};
+}; 
 
 //skapa material
 export const POST: RequestHandler = async ({ request, locals: { supabase } }) => {
