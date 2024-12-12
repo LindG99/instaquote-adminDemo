@@ -1,13 +1,13 @@
-import { supabase } from '$lib/supabase';
 import type { Actions, PageServerLoad } from './$types'
 import { fail } from '@sveltejs/kit';
 
-//Hämta data
+
+//Get data
  export const load: PageServerLoad = async ({ locals: { supabase } }) => {
   const { data: materials, error } = await supabase
   .from('material')
-  .select('material_id, name, type, cost_per_kg_in_kr, density_in_kg_per_cubic_meter, supplier_id')
-  /* Ändra här för att hämta mer data. Börjar med bara namn. */ 
+  .select()
+  //selecting all data from the materials
 
   if (error) {
     console.error('Error fetching materials:', error.message)
@@ -18,8 +18,8 @@ import { fail } from '@sveltejs/kit';
 } 
 
 export const actions: Actions = {
-    //Lägg till material
-    AddMaterial: async ({ request, locals: { supabase} }) => {
+    // Add new materials
+    addMaterial: async ({ request, locals: { supabase} }) => {
         const formData = await request.formData();
         const name = formData.get('name');
         const type = formData.get('type');
@@ -41,8 +41,8 @@ export const actions: Actions = {
 
         return { success: true, message: 'Material har lagts till.'};
     },
-    //Ta bort material
-    RemoveMaterial: async ({ request, locals: { supabase } }) => {
+    // Remove material
+    removeMaterial: async ({ request, locals: { supabase } }) => {
         const formData = await request.formData();
         const material_id = formData.get('material_id');
 
@@ -60,7 +60,7 @@ export const actions: Actions = {
         }
         return { success: true, message: 'Material har tagits bort!'};
     },
-    //Redigera material
+    // Edit material
     editMaterial: async ({ request, locals: { supabase } }) => { 
 
         const formData = await request.formData();
@@ -71,7 +71,7 @@ export const actions: Actions = {
         const density_in_kg_per_cubic_meter = parseFloat(formData.get('density_in_kg_per_cubic_meter') as string);
         const supplier_id = parseInt(formData.get('supplier_id') as string, 10);
 
-        //kolla värdet 
+        //check value
         if (
             !material_id ||
             !name ||
@@ -84,7 +84,7 @@ export const actions: Actions = {
             return fail(400, { success: false, message: 'Alla fält måste fyllas i korrekt.'});
         }
 
-        //Här uppdateras materialet
+        //updates data
         const {error} = await  supabase
             .from ('material')
             .update({
@@ -95,11 +95,11 @@ export const actions: Actions = {
                 supplier_id,
             })
             .eq ('material_id', material_id);
-        //Error ifall något går fel.
+        //Error checking
         if (error) {
             return fail(500, { success: false, message: error.message });
         }
-        // Returnerar värdet och uppdateringen sker!
+        // Return value and sends message!
         return { success: true, message: 'Materialet har uppdaterats!'}
     }
 };

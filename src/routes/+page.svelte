@@ -6,7 +6,7 @@
   let materials = [...data.materials];
   $: materials = [...data.materials];
 
-  //Nytt material  
+  // New material  
   let newMaterial = {
       name: '',
       type: '',
@@ -15,7 +15,7 @@
       supplier_id: ''
   };
 
-  // Redigera material
+  // Edit material
   type Material = {
         material_id: string;
         name: string;
@@ -34,22 +34,137 @@
     supplier_id: ''
   };
 
-  //Visningar/views
-  let showAddMaterialForm = false; //vid skapning av nytt material
-  let isEditModalVisible = false; // Kontrollera synlighet.
+  //views
+  let showAddMaterialForm = false; //Add modal view
+  let isEditModalVisible = false; // Edit modal view
 
   const openEditModal = (material: Material) => {
     editMaterial = material;
-    isEditModalVisible = true; //Visa model
-    showAddMaterialForm = false; //Stäng av formulär
+    isEditModalVisible = true; 
+    showAddMaterialForm = false; 
   };
   const openAddMaterial = () => {
     showAddMaterialForm = true;
-    isEditModalVisible = false; //Stäng 
+    isEditModalVisible = false; 
   }
   
-  </script>
+</script>
   
+<!-- HTML for Dashboard material -->
+<div class="container"> 
+  <div class="dashboard">
+    <h1>Material Admin Dashboard</h1>
+    
+    <!-- Search Box, no function yet -->
+    <div class="search-container">
+      <input 
+        type="text" 
+        placeholder="Search materials..." 
+        class="search-box" 
+      />
+    </div>
+  
+    <!-- Material Table. -->
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Cost per kg (kr)</th>
+      <th>Density (kg/m³)</th>
+      <th>Supplier ID</th>
+      <th class="actions">Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {#each materials as material}
+      <tr>
+        <td>{material.name}</td>
+        <td>{material.type}</td>
+        <td>{material.cost_per_kg_in_kr}</td>
+        <td>{material.density_in_kg_per_cubic_meter}</td>
+        <td>{material.supplier_id}</td>
+        <td class="actions">
+          <!-- Edit material button -->
+          <button class="btn edit-btn" on:click={() => openEditModal(material)}>Redigera</button>
+          <!-- Delete Material-->
+          <form method="POST" use:enhance action="?/removeMaterial">
+            <input type="hidden" name="material_id" value={material.material_id} />
+            <button class="btn delete-btn" type="submit">Ta bort</button>
+        </form>
+        </td>
+      </tr>
+    {/each}
+  </tbody>
+</table>
+</div>
+  
+<!-- Add new material button -->
+<button class= "add-btn" on:click={openAddMaterial}>Skapa nytt material</button>
+
+{#if isEditModalVisible}
+  <!-- Edit material -->
+  <div class="form-container">
+    <h2>Redigera material</h2>
+  <form method = "POST" action="?/editMaterial">
+    <input type="hidden" name="material_id" value="{editMaterial.material_id}" />
+    <label>
+        <input type="text" name="name" value="{editMaterial.name}" required placeholder="Ange materialets namn" />
+    </label>
+    <label>
+        <input type="text" name="type" value="{editMaterial.type}" required placeholder="Ange materialets typ" />
+    </label>
+    <label>
+        <input type="number" name="cost_per_kg_in_kr" value="{editMaterial.cost_per_kg_in_kr}" step="any" required placeholder="Ange kostnad per kg i kr"/>
+    </label>
+    <label>
+        <input type="number" name="density_in_kg_per_cubic_meter" value="{editMaterial.density_in_kg_per_cubic_meter}" step="any" required placeholder="Ange densitet i kg per kubikmeter"/>
+    </label>
+    <label>
+        <input type="number" name="supplier_id" value="{editMaterial.supplier_id}" required placeholder="Ange leverantörens ID"/>
+    </label>
+    <div class="button-group">
+    <button type="submit">Spara ändringar</button>
+    <button type="button" on:click={() => isEditModalVisible = false}>Stäng</button>
+    </div>
+  </form>
+  </div>
+{/if}
+
+    
+{#if showAddMaterialForm}
+  <!-- Add new material -->
+  <div class="form-container">
+    <h2>Skapa nytt material</h2>
+    <form method="POST" action="?/addMaterial">
+      <label>
+      <input type="text" name="name" value="{newMaterial.name}" placeholder="Ange materialets namn" />
+      </label>
+      <label>
+      <input type="text" name="type" value="{newMaterial.type}" placeholder="Ange materialets typ" />
+      </label>
+      <label>
+      <input type="number" name="cost_per_kg_in_kr" value="{newMaterial.cost_per_kg_in_kr}" step="any" placeholder="Ange kostnad per kg i kr" />
+      </label>
+      <label>
+      <input type="number" name="density_in_kg_per_cubic_meter" value="{newMaterial.density_in_kg_per_cubic_meter}" step="any" placeholder="Ange densitet i kg per kubikmeter"/>
+      </label>
+      <label>
+      <input type="number" name="supplier_id" value="{newMaterial.supplier_id}" placeholder="Ange leverantörens ID"/>
+      </label>
+      
+      <!-- Buttons in container remove // -->
+      <div class="button-group">
+        <button type="submit">Lägg till material</button>
+        <button type="button" on:click={() => showAddMaterialForm = false}>Stäng</button>
+      </div>
+    </form>
+  </div>
+  {/if}
+</div>
+
+
+<!-- CSS for Material Admin Dashboard -->
 <style>
   .container {
     max-width: 1500px; 
@@ -148,35 +263,35 @@
   }
 
   .button-group button {
-        background-color: #007BFF; /* Bakgrundsfärg för knapparna */
-        color: white; /* Textfärg */
-        padding: 10px 15px; /* Padding för att göra knapparna större */
-        border: none; /* Ta bort standardram */
-        border-radius: 5px; /* Rundade hörn */
-        cursor: pointer; /* Ändra muspekaren till en hand */
-        transition: background-color 0.3s; /* Lägg till en övergångseffekt */
-        flex: 1; /* Gör knapparna lika breda */
-        margin-right: 10px; /* Lägg till marginal mellan knapparna */
+        background-color: #007BFF; 
+        color: white; 
+        padding: 10px 15px; 
+        border: none; 
+        border-radius: 5px; 
+        cursor: pointer; 
+        transition: background-color 0.3s; 
+        flex: 1; 
+        margin-right: 10px; 
     }
 
   .button-group button:last-child {
-        margin-right: 0; /* Ta bort marginalen på den sista knappen */
+        margin-right: 0; 
     }
 
   .button-group button:hover {
-        background-color: #0056b3; /* Mörkare färg vid hover */
+        background-color: #0056b3; 
     }
   @media (max-width: 600px) {
     .container {
-      padding: 10px; /* Minska padding på mindre skärmar */
+      padding: 10px; 
    }
 
     .form-container {
-      width: 100%; /* Gör formuläret fullt brett på små skärmar */
+      width: 100%; 
    }
  }
 
-  /* Knappar för att ta bort // redigera befintligt material */
+  /* Delete / Edit buttons */
   .btn {
     background-color: #007BFF;
     color: white;
@@ -198,7 +313,7 @@
   }
   .edit-btn:hover {
     background-color: #0056b3; 
-    transform: translateY(-2px); /* Liten höjdökning vid hover */
+    transform: translateY(-2px);
   }
 
   .delete-btn {
@@ -211,127 +326,14 @@
     transform: translateY(-2px); 
   }
 
-  /* För form för att ta bort material */
+ 
   form {
     display: inline-block;
   }
 
   .actions {
-    text-align: center; /* Centrerar knapparna i cellen */
+    text-align: center; 
   }
 
 </style>
-  
-<!-- HTML för Dashboard material -->
-<div class="container"> 
-  <div class="dashboard">
-    <h1>Material Admin Dashboard</h1>
-    
-    <!-- Search Box, fungerar ej nu -->
-    <div class="search-container">
-      <input 
-        type="text" 
-        placeholder="Search materials..." 
-        class="search-box" 
-      />
-    </div>
-  
-    <!-- Material Table. -->
-<table>
-  <thead>
-    <tr>
-      <th>Name</th>
-      <th>Type</th>
-      <th>Cost per kg (kr)</th>
-      <th>Density (kg/m³)</th>
-      <th>Supplier ID</th>
-      <th class="actions">Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    {#each materials as material}
-      <tr>
-        <td>{material.name}</td>
-        <td>{material.type}</td>
-        <td>{material.cost_per_kg_in_kr}</td>
-        <td>{material.density_in_kg_per_cubic_meter}</td>
-        <td>{material.supplier_id}</td>
-        <td class="actions">
-          <!-- Redigera button -->
-          <button class="btn edit-btn" on:click={() => openEditModal(material)}>Redigera</button>
-          <!-- Ta bort Material-->
-          <form method="POST" use:enhance action="?/RemoveMaterial">
-            <input type="hidden" name="material_id" value={material.material_id} />
-            <button class="btn delete-btn" type="submit">Ta bort</button>
-        </form>
-        </td>
-      </tr>
-    {/each}
-  </tbody>
-</table>
-</div>
-  
-<!-- Lägg till ny Material Button -->
-<button class= "add-btn" on:click={openAddMaterial}>Skapa nytt material</button>
-
-{#if isEditModalVisible}
-  <!-- Redigera material -->
-  <div class="form-container">
-    <h2>Redigera material</h2>
-  <form method = "POST" action="?/editMaterial">
-    <input type="hidden" name="material_id" value="{editMaterial.material_id}" />
-    <label>
-        <input type="text" name="name" value="{editMaterial.name}" required placeholder="Ange materialets namn" />
-    </label>
-    <label>
-        <input type="text" name="type" value="{editMaterial.type}" required placeholder="Ange materialets typ" />
-    </label>
-    <label>
-        <input type="number" name="cost_per_kg_in_kr" value="{editMaterial.cost_per_kg_in_kr}" step="any" required placeholder="Ange kostnad per kg i kr"/>
-    </label>
-    <label>
-        <input type="number" name="density_in_kg_per_cubic_meter" value="{editMaterial.density_in_kg_per_cubic_meter}" step="any" required placeholder="Ange densitet i kg per kubikmeter"/>
-    </label>
-    <label>
-        <input type="number" name="supplier_id" value="{editMaterial.supplier_id}" required placeholder="Ange leverantörens ID"/>
-    </label>
-    <div class="button-group">
-    <button type="submit">Spara ändringar</button>
-    <button type="button" on:click={() => isEditModalVisible = false}>Stäng</button>
-    </div>
-  </form>
-  </div>
-{/if}
-
-    
-{#if showAddMaterialForm}
-  <!-- Skapa ny material -->
-  <div class="form-container">
-    <h2>Skapa nytt material</h2>
-    <form method="POST" action="?/AddMaterial">
-      <label>
-      <input type="text" name="name" value="{newMaterial.name}" placeholder="Ange materialets namn" />
-      </label>
-      <label>
-      <input type="text" name="type" value="{newMaterial.type}" placeholder="Ange materialets typ" />
-      </label>
-      <label>
-      <input type="number" name="cost_per_kg_in_kr" value="{newMaterial.cost_per_kg_in_kr}" step="any" placeholder="Ange kostnad per kg i kr" />
-      </label>
-      <label>
-      <input type="number" name="density_in_kg_per_cubic_meter" value="{newMaterial.density_in_kg_per_cubic_meter}" step="any" placeholder="Ange densitet i kg per kubikmeter"/>
-      </label>
-      <label>
-      <input type="number" name="supplier_id" value="{newMaterial.supplier_id}" placeholder="Ange leverantörens ID"/>
-      </label>
-      
-      <!-- Knapparna i en container -->
-      <div class="button-group">
-        <button type="submit">Lägg till material</button>
-        <button type="button" on:click={() => showAddMaterialForm = false}>Stäng</button>
-      </div>
-    </form>
-  </div>
-  {/if}
-</div>
   
