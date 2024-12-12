@@ -1,14 +1,11 @@
 <script lang="ts">
-	import { updated } from "$app/stores";
-  import { onMount } from "svelte";
+	import type { PageData } from "./$types";
+  import { enhance } from "$app/forms";
   
-  let showAddMaterialForm = false; 
-  
-  export let data: { materials: any[] }; 
+  export let data: PageData
   let materials = [...data.materials];
-  $: materials = [...data.materials];
 
-    
+  // New material  
   let newMaterial = {
       name: '',
       type: '',
@@ -16,57 +13,10 @@
       density_in_kg_per_cubic_meter: '',
       supplier_id: ''
   };
-   
-  onMount(async () => {
-     await loadMaterials();
-   });
 
-  //Ladda material
-   const loadMaterials = async () => {
-    const response = await fetch('/materials', { method: 'GET'});
-    const result = await response.json();
-    materials = result.materials ?? [];
-  };
-
-  //Lägg till material
-  const addMaterial = async () => {
-    const costPerKg = parseFloat(newMaterial.cost_per_kg_in_kr);
-    const density = parseFloat(newMaterial.density_in_kg_per_cubic_meter);
-
-    if (isNaN(costPerKg) || isNaN(density)) {
-        alert('Vänligen ange giltiga numeriska värden.');
-        return;
-    }
-
-      const response = await fetch('/materials', { /* Ändra path senare */
-        method: 'POST',
-        body: new URLSearchParams({
-          'name': newMaterial.name,
-          'type': newMaterial.type,
-          'cost_per_kg_in_kr': costPerKg.toString(),
-          'density_in_kg_per_cubic_meter': density.toString(),
-          'supplier_id': newMaterial.supplier_id.toString()
-        })
-      });
-  
-      const result = await response.json();
-      
-      if (result.success) {
-        if (result.data && result.data.length > 0) {
-        materials = [...materials, result.data[0]];  // Lägg till första objektet i arrayen
-        newMaterial = { name: '', type: '', cost_per_kg_in_kr: '', density_in_kg_per_cubic_meter: '', supplier_id: '' };
-        } else {
-        // Ingen data returnerades, du kan logga ett meddelande utan att kasta ett error
-        alert('Materialet skapades, men inget resultat returnerades.');
-    }
-      } else {
-        alert(`Error: ${result.message}`);
-      }
-  };
-
-  // Redigera material
+  // Edit material
   type Material = {
-        material_id: string; // or number
+        material_id: string;
         name: string;
         type: string;
         cost_per_kg_in_kr: number;
@@ -74,175 +24,173 @@
         supplier_id: string;
   };
 
-  let editModal: HTMLDivElement | null = null;
-  let editingMaterial: Material | null = null; // Håller reda på vilket material som redigeras
-  let isEditModalVisible = false; // Kontrollera modals synlighet.
-  
+  let editMaterial: Material = {
+    material_id: '',
+    name: '',
+    type: '',
+    cost_per_kg_in_kr: 0,
+    density_in_kg_per_cubic_meter: 0,
+    supplier_id: ''
+  };
+
+  //views
+  let showAddMaterialForm = false; //Add modal view
+  let isEditModalVisible = false; // Edit modal view
 
   const openEditModal = (material: Material) => {
-      editingMaterial = { ...material };
-      isEditModalVisible = true; //Visa model
+    editMaterial = material;
+    isEditModalVisible = true; 
+    showAddMaterialForm = false; 
   };
-
-  const closeEditModal = () => {
-    editingMaterial = null;
-      isEditModalVisible = false; //Stäng model.
-  };
-
-  const saveEditedMaterial = async (event: SubmitEvent) => {
-
-    if (!editingMaterial) {
-      alert('Inget material att spara.');
-      return; // Stoppa om inget material redigeras
-    }
-
-    try {
-
-      const response = await fetch('/materials', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          material_id: editingMaterial.material_id,
-          name: editingMaterial.name,
-          type: editingMaterial.type,
-          cost_per_kg_in_kr: editingMaterial.cost_per_kg_in_kr.toString(),
-          density_in_kg_per_cubic_meter: editingMaterial.density_in_kg_per_cubic_meter.toString(),
-          supplier_id: editingMaterial.supplier_id.toString(),
-        }),
-      });
-
-      const result = await response.json();
-      if (result.success) {
-        await loadMaterials(); // Ladda om alla material efter uppdatering
-        editingMaterial = null; // Rensa redigeringsobjektet
-      } else {
-        alert(`Fel vid uppdatering: ${result.message}`);
-      }
-    } catch (error) {
-      alert('Ett fel inträffade vid uppdatering av materialet.');
-      console.error(error);
-    }
-  };
-  //Här slutar redigera material
+  const openAddMaterial = () => {
+    showAddMaterialForm = true;
+    isEditModalVisible = false; 
+  }
   
-  // Radera material
-  const deleteMaterial = async (material_id: string) => {
-      const response = await fetch(`/materials`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ material_id })
-      });
-
-      const result = await response.json();
-      if (result.success) {
-        await loadMaterials();  // Ladda om alla material från backend
-        materials = materials.filter(material => material._id !== material_id); 
-      } else {
-        console.error(result.message);
-      }
-  };
-  </script>
+</script>
   
-  <style>
-    .container {
+<!-- HTML for Dashboard material -->
+<div class="container"> 
+  <div class="dashboard">
+    <h1>Material Admin Dashboard</h1>
+    
+    <!-- Search Box, no function yet -->
+    <div class="search-container">
+      <input 
+        type="text" 
+        placeholder="Search materials..." 
+        class="search-box" 
+      />
+    </div>
+  
+    <!-- Material Table. -->
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Cost per kg (kr)</th>
+      <th>Density (kg/m³)</th>
+      <th>Supplier ID</th>
+      <th class="actions">Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {#each materials as material}
+      <tr>
+        <td>{material.name}</td>
+        <td>{material.type}</td>
+        <td>{material.cost_per_kg_in_kr}</td>
+        <td>{material.density_in_kg_per_cubic_meter}</td>
+        <td>{material.supplier_id}</td>
+        <td class="actions">
+          <!-- Edit material button -->
+          <button class="btn edit-btn" on:click={() => openEditModal(material)}>Redigera</button>
+          <!-- Delete Material-->
+          <form method="POST" use:enhance action="?/removeMaterial">
+            <input type="hidden" name="material_id" value={material.material_id} />
+            <button class="btn delete-btn" type="submit">Ta bort</button>
+        </form>
+        </td>
+      </tr>
+    {/each}
+  </tbody>
+</table>
+</div>
+  
+<!-- Add new material button -->
+<button class= "add-btn" on:click={openAddMaterial}>Skapa nytt material</button>
+
+{#if isEditModalVisible}
+  <!-- Edit material -->
+  <div class="form-container">
+    <h2>Redigera material</h2>
+  <form method = "POST" action="?/editMaterial">
+    <input type="hidden" name="material_id" value="{editMaterial.material_id}" />
+    <label>
+        <input type="text" name="name" value="{editMaterial.name}" required placeholder="Ange materialets namn" />
+    </label>
+    <label>
+        <input type="text" name="type" value="{editMaterial.type}" required placeholder="Ange materialets typ" />
+    </label>
+    <label>
+        <input type="number" name="cost_per_kg_in_kr" value="{editMaterial.cost_per_kg_in_kr}" step="any" required placeholder="Ange kostnad per kg i kr"/>
+    </label>
+    <label>
+        <input type="number" name="density_in_kg_per_cubic_meter" value="{editMaterial.density_in_kg_per_cubic_meter}" step="any" required placeholder="Ange densitet i kg per kubikmeter"/>
+    </label>
+    <label>
+        <input type="number" name="supplier_id" value="{editMaterial.supplier_id}" required placeholder="Ange leverantörens ID"/>
+    </label>
+    <div class="button-group">
+    <button type="submit">Spara ändringar</button>
+    <button type="button" on:click={() => isEditModalVisible = false}>Stäng</button>
+    </div>
+  </form>
+  </div>
+{/if}
+
+    
+{#if showAddMaterialForm}
+  <!-- Add new material -->
+  <div class="form-container">
+    <h2>Skapa nytt material</h2>
+    <form method="POST" action="?/addMaterial">
+      <label>
+      <input type="text" name="name" value="{newMaterial.name}" placeholder="Ange materialets namn" />
+      </label>
+      <label>
+      <input type="text" name="type" value="{newMaterial.type}" placeholder="Ange materialets typ" />
+      </label>
+      <label>
+      <input type="number" name="cost_per_kg_in_kr" value="{newMaterial.cost_per_kg_in_kr}" step="any" placeholder="Ange kostnad per kg i kr" />
+      </label>
+      <label>
+      <input type="number" name="density_in_kg_per_cubic_meter" value="{newMaterial.density_in_kg_per_cubic_meter}" step="any" placeholder="Ange densitet i kg per kubikmeter"/>
+      </label>
+      <label>
+      <input type="number" name="supplier_id" value="{newMaterial.supplier_id}" placeholder="Ange leverantörens ID"/>
+      </label>
+      
+      <!-- Buttons in container remove // -->
+      <div class="button-group">
+        <button type="submit">Lägg till material</button>
+        <button type="button" on:click={() => showAddMaterialForm = false}>Stäng</button>
+      </div>
+    </form>
+  </div>
+  {/if}
+</div>
+
+
+<!-- CSS for Material Admin Dashboard -->
+<style>
+  .container {
     max-width: 1500px; 
     margin: auto; 
     padding: 20px; 
     }
 
-    .modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  justify-content: center; /* Centrera horisontellt */
-  align-items: center;    /* Centrera vertikalt */
-  background-color: rgba(0, 0, 0, 0.5); /* Halvtransparent bakgrund */
-  z-index: 1000; /* Säkerställ att modalen är ovanpå allt annat */
-  opacity: 0; /* Gör den osynlig som standard */
-  pointer-events: none; /* Blockera interaktion när inte synlig */
-  transition: opacity 0.3s ease;
-}
-
-.modal.show {
-  opacity: 1;
-  pointer-events: auto; /* Tillåt interaktion */
-}
-
-.modal-content {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  max-width: 500px;
-  width: 100%;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-  .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .modal-header h2 {
-    margin: 0;
-    font-size: 20px;
-  }
-
-  .modal-close {
-    background: none;
-    border: none;
-    font-size: 20px;
-    cursor: pointer;
-  }
-
-  .modal-content input {
-    width: 100%;
-    margin: 10px 0;
-    padding: 8px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-  }
-
-  .modal-content button {
-    width: 100%;
-    padding: 10px;
-    margin-top: 10px;
-    background-color: #007BFF;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-  }
-
-  .modal-content button:hover {
-    background-color: #0056b3;
-  }
-
-    .dashboard {
+  .dashboard {
       display: flex;
       flex-direction: column; 
       align-items: center; 
       padding: 20px; 
     }
   
-    h1 {
+  h1 {
       margin-bottom: 10px;
       text-align: center;
       color: #333;
     }
   
-    .search-container {
+  .search-container {
       display: flex;
       justify-content: flex-end;
       margin-bottom: 10px;
     }
   
-    .search-box {
+  .search-box {
       padding: 5px;
       font-size: 14px;
       width: 300px;
@@ -250,32 +198,32 @@
       border-radius: 5px;
     }
   
-    table {
+  table {
       width: 100%;
       border-collapse: collapse;
       margin: 20px 0;
     }
   
-    th, td {
+  th, td {
       padding: 10px;
       text-align: left;
       border: 1px solid #ddd;
     }
   
-    th {
+  th {
       background-color: #f4f4f4;
       color: #333;
     }
   
-    tr:nth-child(even) {
+  tr:nth-child(even) {
       background-color: #f9f9f9;
     }
   
-    .actions {
+  .actions {
       text-align: center;
     }
   
-    .add-btn {
+  .add-btn {
       background-color: #007BFF;
       color: white;
       margin-top: 10px;
@@ -284,6 +232,9 @@
       border-radius: 5px;
       text-decoration: none;
       display: inline-block;
+    }
+    .add-btn:hover{
+      background-color: #0069D9;
     }
   
   .form-container {
@@ -308,125 +259,80 @@
     display: flex; 
     justify-content: space-between; 
     margin-top: 20px; 
-}
+  }
 
   .button-group button {
-        background-color: #007BFF; /* Bakgrundsfärg för knapparna */
-        color: white; /* Textfärg */
-        padding: 10px 15px; /* Padding för att göra knapparna större */
-        border: none; /* Ta bort standardram */
-        border-radius: 5px; /* Rundade hörn */
-        cursor: pointer; /* Ändra muspekaren till en hand */
-        transition: background-color 0.3s; /* Lägg till en övergångseffekt */
-        flex: 1; /* Gör knapparna lika breda */
-        margin-right: 10px; /* Lägg till marginal mellan knapparna */
+        background-color: #007BFF; 
+        color: white; 
+        padding: 10px 15px; 
+        border: none; 
+        border-radius: 5px; 
+        cursor: pointer; 
+        transition: background-color 0.3s; 
+        flex: 1; 
+        margin-right: 10px; 
     }
 
   .button-group button:last-child {
-        margin-right: 0; /* Ta bort marginalen på den sista knappen */
+        margin-right: 0; 
     }
 
   .button-group button:hover {
-        background-color: #0056b3; /* Mörkare färg vid hover */
+        background-color: #0056b3; 
     }
   @media (max-width: 600px) {
     .container {
-      padding: 10px; /* Minska padding på mindre skärmar */
+      padding: 10px; 
    }
 
     .form-container {
-      width: 100%; /* Gör formuläret fullt brett på små skärmar */
+      width: 100%; 
    }
-}
+ }
 
-  </style>
-  
-  <!-- HTML for Dashboard material -->
-  <div class="container"> 
-  <div class="dashboard">
-    <h1>Material Admin Dashboard</h1>
-    
-    <!-- Search Box -->
-    <div class="search-container">
-      <input 
-        type="text" 
-        placeholder="Search materials..." 
-        class="search-box" 
-      />
-    </div>
-  
-    <!-- Material Table -->
-<table>
-  <thead>
-    <tr>
-      <th>Name</th>
-      <th>Type</th>
-      <th>Cost per kg (kr)</th>
-      <th>Density (kg/m³)</th>
-      <th>Supplier ID</th>
-      <th class="actions">Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    {#each materials as material}
-      <tr>
-        <td>{material.name}</td>
-        <td>{material.type}</td>
-        <td>{material.cost_per_kg_in_kr}</td>
-        <td>{material.density_in_kg_per_cubic_meter}</td>
-        <td>{material.supplier_id}</td>
-        <td class="actions">
-          <!-- Edit button -->
-          <button on:click={() => openEditModal(material)}>Redigera</button>
-          <button on:click={() => deleteMaterial(material.material_id)}>Ta bort</button>
-        </td>
-      </tr>
-    {/each}
-  </tbody>
-</table>
-  </div>
-  
-<!-- Lägg till ny Material Button -->
-<a href="javascript:void(0)" class="add-btn" on:click={() => showAddMaterialForm = true}>Lägg in nytt material</a>
+  /* Delete / Edit buttons */
+  .btn {
+    background-color: #007BFF;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    display: inline-block;
+    margin: 5px;
+    text-align: center;
+    text-decoration: none;
+  }
+  .edit-btn {
+    background-color: #007BFF; 
+    color: white;
+  }
+  .edit-btn:hover {
+    background-color: #0056b3; 
+    transform: translateY(-2px);
+  }
 
-<!-- Redigera existerande material -->
-<div class="modal {isEditModalVisible ? 'show' : ''}" bind:this={editModal}>
-  <div class="modal-content">
-    <div class="modal-header">
-      <h2>Redigera material</h2>
-      <button class="modal-close" on:click={closeEditModal}>&times;</button>
-    </div>
-    {#if editingMaterial}
-      <form on:submit|preventDefault={saveEditedMaterial}>
-        <input type="text" placeholder="Name" bind:value={editingMaterial.name} />
-        <input type="text" placeholder="Type" bind:value={editingMaterial.type} />
-        <input type="number" placeholder="Cost per kg (kr)" bind:value={editingMaterial.cost_per_kg_in_kr} step="any"/>
-        <input type="number" placeholder="Density (kg/m³)" bind:value={editingMaterial.density_in_kg_per_cubic_meter} step="any"/>
-        <input type="text" placeholder="Supplier ID" bind:value={editingMaterial.supplier_id} />
-        <button type="submit">Spara</button>
-      </form>
-    {/if}
-  </div>
-</div>
-    
-{#if showAddMaterialForm}
-  <!-- Skapa ny material -->
-  <div class="form-container">
-    <h2>Skapa nytt material</h2>
-    <form on:submit|preventDefault={addMaterial}>
-      <input type="text" placeholder="Name" bind:value={newMaterial.name} />
-      <input type="text" placeholder="Type" bind:value={newMaterial.type} />
-      <input type="text" placeholder="Cost per kg (kr)" bind:value={newMaterial.cost_per_kg_in_kr} />
-      <input type="text" placeholder="Density (kg/m³)" bind:value={newMaterial.density_in_kg_per_cubic_meter} />
-      <input type="text" placeholder="Supplier ID" bind:value={newMaterial.supplier_id} />
-      
-      <!-- Knapparna i en container -->
-      <div class="button-group">
-        <button type="submit">Lägg till material</button>
-        <button type="button" on:click={() => showAddMaterialForm = false}>Stäng</button>
-      </div>
-    </form>
-  </div>
-  {/if}
-</div>
+  .delete-btn {
+    background-color: #f44336; 
+    color: white;
+  }
+
+  .delete-btn:hover {
+    background-color: #e53935; 
+    transform: translateY(-2px); 
+  }
+
+ 
+  form {
+    display: inline-block;
+  }
+
+  .actions {
+    text-align: center; 
+  }
+
+</style>
   
