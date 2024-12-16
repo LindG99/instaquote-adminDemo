@@ -79,6 +79,7 @@ const materialSchema = z.object({
     }
 } 
 
+// Actions, add materials, remove materials, edit materials
 export const actions: Actions = {
     // Add new materials with zod validation
     addMaterial: async ({ request, locals: { supabase } }) => {

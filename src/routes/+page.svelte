@@ -1,5 +1,6 @@
 <script lang="ts">
-  
+  import { superForm } from "sveltekit-superforms/client"
+  import SuperDebug from 'sveltekit-superforms';
 	import type { PageData } from "./$types";
   import { enhance } from "$app/forms";
   
@@ -111,14 +112,14 @@
   <!-- Edit material -->
   <div class="form-container">
     <h2>Redigera material</h2>
-  <form method = "POST" action="?/editMaterial">
+  <form use:enhance method = "POST" action="?/editMaterial">
     <input type="hidden" name="material_id" value="{editMaterial.material_id}" />
     <!-- -->
     <label class="input-label">
         <input
         type="text"
         name="name"
-        value="{editMaterial.name ?? form?.data?.name}"
+        bind:value="{editMaterial.name}"
         required
         placeholder="Ange materialets namn"
         />
@@ -131,7 +132,7 @@
         <input
         type="text"
         name="type"
-        value="{editMaterial.type ?? form?.data?.type}"
+        bind:value="{editMaterial.type}"
         required
         placeholder="Ange materialets typ"
         />
@@ -144,7 +145,7 @@
         <input
         type="number"
         name="cost_per_kg_in_kr"
-        value="{editMaterial.cost_per_kg_in_kr ?? form?.data?.cost_per_kg_in_kr}"
+        bind:value="{editMaterial.cost_per_kg_in_kr}"
         step="any"
         required
         placeholder="Ange kostnad per kg i kr"/>
@@ -157,7 +158,7 @@
         <input
         type="number"
         name="density_in_kg_per_cubic_meter"
-        value="{editMaterial.density_in_kg_per_cubic_meter ?? form?.data?.density_in_kg_per_cubic_meter}"
+        bind:value="{editMaterial.density_in_kg_per_cubic_meter}"
         step="any"
         required
         placeholder="Ange densitet i kg per kubikmeter"
@@ -171,7 +172,7 @@
         <input 
         type="number"
         name="supplier_id"
-        value="{editMaterial.supplier_id ?? form?.data?.supplier_id}"
+        bind:value="{editMaterial.supplier_id}"
         required
         placeholder="Ange leverantörens ID"
         />
@@ -192,12 +193,12 @@
 {#if showAddMaterialForm}
     <div class="form-container">
       <h2>Skapa nytt material</h2>
-      <form method="POST" action="?/addMaterial">
+      <form use:enhance method="POST" action="?/addMaterial">
         <label class="input-label">
           <input
             type="text"
             name="name"
-            value={form?.data?.name ?? newMaterial.name ?? ''}
+            bind:value={newMaterial.name}
             placeholder="Ange materialets namn"
           />
           {#if form?.errors?.name}
@@ -208,7 +209,7 @@
           <input 
             type="text"
             name="type"
-            value={form?.data?.type ?? newMaterial.type ?? ''}
+            bind:value={newMaterial.type}
             placeholder="Ange materialets typ"
           />
           {#if form?.errors?.type}
@@ -220,7 +221,7 @@
           <input
             type="number"
             name="cost_per_kg_in_kr"
-            value={form?.data?.cost_per_kg_in_kr ?? newMaterial.cost_per_kg_in_kr}
+            bind:value={newMaterial.cost_per_kg_in_kr}
             step="any"
             placeholder="Ange kostnad per kg i kr"
           />
@@ -233,7 +234,7 @@
           <input
             type="number"
             name="density_in_kg_per_cubic_meter"
-            value={newMaterial.density_in_kg_per_cubic_meter}
+            bind:value={newMaterial.density_in_kg_per_cubic_meter}
             step="any"
             placeholder="Ange densitet i kg per kubikmeter"
           />
@@ -246,7 +247,7 @@
           <input 
             type="number"
             name="supplier_id"
-            value={form?.data?.supplier_id ?? newMaterial.supplier_id}
+            bind:value={newMaterial.supplier_id}
             placeholder="Ange leverantörens ID"
           />
           {#if form?.errors?.supplier_id}
