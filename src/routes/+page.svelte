@@ -1,39 +1,32 @@
 <script lang="ts">
   import { superForm } from "sveltekit-superforms/client"
   import SuperDebug from 'sveltekit-superforms';
-	import type { PageData } from "./$types";
+	import type { ActionData, PageData } from "./$types";
   import { enhance } from "$app/forms";
+	import type { MaterialPartialSchema, MaterialWithIdPartialSchema } from "$lib";
   
   export let data: PageData
+  export let form: ActionData;
   let materials = [...data.materials];
   $: materials = [...data.materials];
 
   // New material  
-  let newMaterial = {
+  let newMaterial: MaterialPartialSchema = form?.data ?? {
       name: '',
       type: '',
-      cost_per_kg_in_kr: '',
-      density_in_kg_per_cubic_meter: '',
-      supplier_id: ''
+      cost_per_kg_in_kr: 0,
+      density_in_kg_per_cubic_meter: 0,
+      supplier_id: undefined
   };
 
-  // Edit material
-  type Material = {
-        material_id: string;
-        name: string;
-        type: string;
-        cost_per_kg_in_kr: number;
-        density_in_kg_per_cubic_meter: number;
-        supplier_id: string;
-  };
 
-  let editMaterial: Material = {
-    material_id: '',
+  let editMaterial: MaterialWithIdPartialSchema = form?.data ?? {
+    material_id: undefined,
     name: '',
     type: '',
     cost_per_kg_in_kr: 0,
     density_in_kg_per_cubic_meter: 0,
-    supplier_id: ''
+    supplier_id: undefined
   };
 
   //views
@@ -41,7 +34,7 @@
   let isEditModalVisible = false; // Edit modal view
 
 
-  const openEditModal = (material: Material) => {
+  const openEditModal = (material: MaterialWithIdPartialSchema) => {
     editMaterial = material;
     isEditModalVisible = true; 
     showAddMaterialForm = false; 
@@ -52,7 +45,6 @@
     isEditModalVisible = false; 
   }
 
-  export let form;
   
 </script>
   
