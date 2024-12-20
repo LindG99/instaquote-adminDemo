@@ -1,23 +1,31 @@
-import { materialSchema, materialWithIdSchema } from '$lib';
+import { materialIdSchema, materialSchema, materialWithIdSchema } from '$lib';
+import { superForm, superValidate, message } from 'sveltekit-superforms';
 import type { Actions, PageServerLoad } from './$types';
+import { zod } from 'sveltekit-superforms/adapters';
 import { fail } from '@sveltejs/kit';
+
 
 //Get data
 export const load: PageServerLoad = async ({ locals: { supabase } }) => {
+
+	const editForm = await superValidate(zod(materialWithIdSchema));
+	const createNewForm = await superValidate(zod(materialSchema));
+	const removeForm = await superValidate(zod(materialIdSchema))
+
 	const { data: materials, error } = await supabase.from('material').select();
 	//selecting all data from the materials
 
 	if (error) {
 		console.error('Error fetching materials:', error.message);
-		return { materials: [] };
+		return { removeForm, createNewForm, editForm, materials: [] };
 	}
 	try {
 		const validatedMaterials = materials?.map((material) => materialWithIdSchema.parse(material));
 		console.log('Successfully loaded materials');
-		return { materials: validatedMaterials ?? [] };
+		return { removeForm, createNewForm, editForm, materials: validatedMaterials ?? [] };
 	} catch (err) {
 		console.error('Error validating materials:', err);
-		return { materials: materials ?? [] };
+		return { removeForm, createNewForm, editForm, materials: materials ?? [] };
 	}
 };
 
@@ -25,78 +33,80 @@ export const load: PageServerLoad = async ({ locals: { supabase } }) => {
 export const actions: Actions = {
 	// Add new materials with zod validation
 	addMaterial: async ({ request, locals: { supabase } }) => {
-		const formData = Object.fromEntries(await request.formData());
+		//const formData = Object.fromEntries(await request.formData());
+		const createNewForm = await superValidate(request, zod(materialSchema))
 
-		const result = materialSchema.safeParse(formData);
-
-		if (result.success === false) {
-			console.log(result.error);
-			console.log(result.error.flatten());
-			const { fieldErrors: errors } = result.error.flatten();
+		if (!createNewForm.valid) {
+			console.log(createNewForm.errors);
+			console.log(createNewForm.data);
 			// const { name, type, ...rest } = formData;
-			return {
-				data: formData,
-				errors
-			};
+			return fail(400, { createNewForm })
 		}
 
 		console.log('SUCCESS');
-		console.log(result);
+		console.log(materialSchema)
 
 		// try adding data to the database
-		const { error } = await supabase.from('material').insert(result.data);
+		const { error } = await supabase.from('material').insert(createNewForm.data);
 
 		if (error) {
-			return fail(500, { success: false, message: error.message });
+			return fail(500, { createNewForm });
 		}
-		return { success: true, message: 'Material har lagts till.' };
+		return message(createNewForm, 'Material har skapats!')
 	},
 
 	// Remove material
 	removeMaterial: async ({ request, locals: { supabase } }) => {
-		const formData = await request.formData();
-		const material_id = formData.get('material_id');
+		
+		const removeForm = await superValidate(request, zod(materialIdSchema))
 
-		if (!material_id) {
-			return fail(400, { success: false, message: ' Material för ID saknas!' });
+		if (!removeForm.valid){
+			console.log(removeForm.errors)
+			return fail(400, { removeForm, message: 'Valideringsfel uppstod vid borttagning'})
 		}
+		
+		const { material_id } = removeForm.data;
+		try {
+			// Ta bort material från databasen
+			const { error } = await supabase
+				.from('material')
+				.delete()
+				.eq('material_id', material_id);
+	
+			if (error) {
+				console.error(error);
+				return fail(500, { removeForm, message: 'Ett fel uppstod vid borttagning av materialet!' });
+			}
+			return message(removeForm, 'Materialet har tagits bort!');
 
-		const { error } = await supabase.from('material').delete().eq('material_id', material_id);
-
-		if (error) {
-			return fail(500, { success: false, message: error.message });
+		} catch (err) {
+			console.error(err);
+			return fail(500, { removeForm, message: 'Ett oväntat fel inträffade!' });
 		}
-		return { success: true, message: 'Material har tagits bort!' };
 	},
 	// Edit material with zod validation
 	editMaterial: async ({ request, locals: { supabase } }) => {
-		const formData = Object.fromEntries(await request.formData());
 
-		const result = materialWithIdSchema.safeParse(formData);
-		console.log('result ');
-		if (result.success === false) {
-			console.log(result.error);
-			console.log(result.error.flatten());
-			const { fieldErrors: errors } = result.error.flatten();
-			const { name, type, ...rest } = formData;
-			return {
-				data: rest,
-				errors
-			};
+
+		const editForm = await superValidate(request, zod(materialWithIdSchema))
+		
+
+		if (!editForm.valid) {
+			console.log(editForm.errors);
+			console.log(editForm.data);
+			return fail(400, { editForm })
 		}
-		console.log('SUCCESS', result);
 
 		//updates data
-		console.log('before supabase');
 		const { error } = await supabase
 			.from('material')
-			.update(result.data)
-			.eq('material_id', result.data.material_id); //paresedData becuase the material_id is not in materialSchema and should't be editable
-		console.log('after supabase');
+			.update(editForm.data)
+			.eq('material_id', editForm.data.material_id);
+			console.log(editForm.data.material_id)
 
-		//Error checking
 		if (error) {
-			return fail(500, { success: false, message: error.message });
+			return fail(500, { editForm });
 		}
+		return message(editForm, 'Material har redigerats!')
 	}
 };

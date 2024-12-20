@@ -1,41 +1,41 @@
 <script lang="ts">
-  import { superForm } from "sveltekit-superforms/client"
-  import SuperDebug from 'sveltekit-superforms';
+  import { superForm} from "sveltekit-superforms/client"
+  import { zodClient } from 'sveltekit-superforms/adapters';
 	import type { ActionData, PageData } from "./$types";
-  import { enhance } from "$app/forms";
-	import type { MaterialPartialSchema, MaterialWithIdPartialSchema } from "$lib";
-  
-  export let data: PageData
-  export let form: ActionData;
-  let materials = [...data.materials];
-  $: materials = [...data.materials];
+	import { materialSchema, materialIdSchema, type MaterialPartialSchema, type MaterialWithIdPartialSchema } from "$lib";
+  import { fail } from '@sveltejs/kit';
+  import SuperDebug from 'sveltekit-superforms';
+  import { derived } from 'svelte/store';
 
-  // New material  
-  let newMaterial: MaterialPartialSchema = form?.data ?? {
-      name: '',
-      type: '',
-      cost_per_kg_in_kr: 0,
-      density_in_kg_per_cubic_meter: 0,
-      supplier_id: undefined
-  };
+  let { data } = $props();
 
+  const { form, errors, enhance, message } = superForm(data.createNewForm, {
+    resetForm: true
+  });
 
-  let editMaterial: MaterialWithIdPartialSchema = form?.data ?? {
-    material_id: undefined,
-    name: '',
-    type: '',
-    cost_per_kg_in_kr: 0,
-    density_in_kg_per_cubic_meter: 0,
-    supplier_id: undefined
-  };
+  const {
+    form: editForm,
+    errors: editErrors,
+    enhance: editEnhance,
+    message: editMessage
+  } = superForm(data.editForm, {
+    resetForm: true
+  });
+  const {
+    form: removeForm,
+    errors: removeErrors,
+    enhance: removeEnhance,
+    message: removeMessage
+  } = superForm(data.removeForm, {
+    resetForm: true
+  });
 
   //views
-  let showAddMaterialForm = false; //Add modal view
-  let isEditModalVisible = false; // Edit modal view
+  let showAddMaterialForm = $state(false); //Add modal view
+  let isEditModalVisible = $state(false); // Edit modal view
 
-
-  const openEditModal = (material: MaterialWithIdPartialSchema) => {
-    editMaterial = material;
+  const openEditModal = ( materialToBeEditet: any ) => { 
+    $editForm = materialToBeEditet;
     isEditModalVisible = true; 
     showAddMaterialForm = false; 
   };
@@ -45,9 +45,10 @@
     isEditModalVisible = false; 
   }
 
-  
 </script>
-  
+
+<SuperDebug data={$form} />
+
 <!-- HTML for Dashboard material -->
 <div class="container"> 
   <div class="dashboard">
@@ -75,7 +76,7 @@
     </tr>
   </thead>
   <tbody>
-    {#each materials as material}
+    {#each data.materials as material}
       <tr>
         <td>{material.name}</td>
         <td>{material.type}</td>
@@ -84,10 +85,10 @@
         <td>{material.supplier_id}</td>
         <td class="actions">
           <!-- Edit material button -->
-          <button class="btn edit-btn" on:click={() => openEditModal(material)}>Redigera</button>
+          <button class="btn edit-btn" onclick={ () => openEditModal (material) }>Redigera</button>
           <!-- Delete Material-->
-          <form method="POST" use:enhance action="?/removeMaterial">
-            <input type="hidden" name="material_id" value={material.material_id} />
+          <form method="POST" use:removeEnhance action="?/removeMaterial">
+            <input type="hidden" name="material_id" bind:value={material.material_id} />
             <button class="btn delete-btn" type="submit">Ta bort</button>
         </form>
         </td>
@@ -98,25 +99,24 @@
 </div>
   
 <!-- Add new material button -->
-<button class= "add-btn" on:click={openAddMaterial}>Skapa nytt material</button>
+<button class= "add-btn" onclick={openAddMaterial}>Skapa nytt material</button>
 
 {#if isEditModalVisible}
   <!-- Edit material -->
   <div class="form-container">
     <h2>Redigera material</h2>
-  <form use:enhance method = "POST" action="?/editMaterial">
-    <input type="hidden" name="material_id" value="{editMaterial.material_id}" />
-    <!-- -->
+  <form use:editEnhance method = "POST" action="?/editMaterial">
+     <input type="hidden" name="material_id" bind:value="{$editForm.material_id}" />
     <label class="input-label">
         <input
         type="text"
         name="name"
-        bind:value="{editMaterial.name}"
+        bind:value="{$editForm.name}"
         required
         placeholder="Ange materialets namn"
         />
-        {#if form?.errors?.name}
-        <span class="error-message">{form.errors.name[0]}</span>
+        {#if $editErrors.name}
+        <span class="error-message">{$editErrors.name[0]}</span>
         {/if}
     </label>
     <!-- type -->
@@ -124,12 +124,12 @@
         <input
         type="text"
         name="type"
-        bind:value="{editMaterial.type}"
+        bind:value="{$editForm.type}"
         required
         placeholder="Ange materialets typ"
         />
-        {#if form?.errors?.type}
-        <span class="error-message">{form.errors.type[0]}</span>
+        {#if $editErrors.type}
+        <span class="error-message">{$editErrors.type[0]}</span>
         {/if}
     </label>
     <!-- cost_per_kg_in_kr -->
@@ -137,12 +137,12 @@
         <input
         type="number"
         name="cost_per_kg_in_kr"
-        bind:value="{editMaterial.cost_per_kg_in_kr}"
+        bind:value="{$editForm.cost_per_kg_in_kr}"
         step="any"
         required
         placeholder="Ange kostnad per kg i kr"/>
-        {#if form?.errors?.cost_per_kg_in_kr}
-        <span class="error-message">{form.errors.cost_per_kg_in_kr[0]}</span>
+        {#if $editErrors.cost_per_kg_in_kr}
+        <span class="error-message">{$editErrors.cost_per_kg_in_kr}</span>
         {/if}
     </label>
     <!-- density_in_kg_per_cubic_meter -->
@@ -150,13 +150,13 @@
         <input
         type="number"
         name="density_in_kg_per_cubic_meter"
-        bind:value="{editMaterial.density_in_kg_per_cubic_meter}"
+        bind:value="{$editForm.density_in_kg_per_cubic_meter}"
         step="any"
         required
         placeholder="Ange densitet i kg per kubikmeter"
         />
-        {#if form?.errors?.density_in_kg_per_cubic_meter}
-        <span class="error-message">{form.errors.density_in_kg_per_cubic_meter[0]}</span>
+        {#if $editErrors.density_in_kg_per_cubic_meter}
+        <span class="error-message">{$editErrors.density_in_kg_per_cubic_meter}</span>
         {/if}
     </label>
     <!-- supplier_id -->
@@ -164,18 +164,18 @@
         <input 
         type="number"
         name="supplier_id"
-        bind:value="{editMaterial.supplier_id}"
+        bind:value="{$editForm.supplier_id}"
         required
         placeholder="Ange leverantörens ID"
         />
-        {#if form?.errors?.supplier_id}
-        <span class="error-message">{form.errors.supplier_id[0]}</span>
+        {#if $editErrors.supplier_id}
+        <span class="error-message">{$editErrors.supplier_id[0]}</span>
         {/if}
     </label>
 
     <div class="button-group">
     <button type="submit">Spara ändringar</button>
-    <button type="button" on:click={() => isEditModalVisible = false}>Stäng</button>
+    <button type="button" onclick={() => isEditModalVisible = false}>Stäng</button>
     </div>
   </form>
   </div>
@@ -190,22 +190,22 @@
           <input
             type="text"
             name="name"
-            bind:value={newMaterial.name}
+            bind:value={$form.name}
             placeholder="Ange materialets namn"
           />
-          {#if form?.errors?.name}
-            <span class="error-message">{form.errors.name[0]}</span>
+          {#if $errors.name}
+            <span class="error-message">{$errors.name[0]}</span>
           {/if}
         </label>
         <label class="input-label">
           <input 
             type="text"
             name="type"
-            bind:value={newMaterial.type}
+            bind:value={$form.type}
             placeholder="Ange materialets typ"
           />
-          {#if form?.errors?.type}
-            <span class="error-message">{form.errors.type[0]}</span>
+          {#if $errors.type}
+            <span class="error-message">{$errors.type[0]}</span>
           {/if}
         </label>
       
@@ -213,12 +213,12 @@
           <input
             type="number"
             name="cost_per_kg_in_kr"
-            bind:value={newMaterial.cost_per_kg_in_kr}
+            bind:value={$form.cost_per_kg_in_kr}
             step="any"
             placeholder="Ange kostnad per kg i kr"
           />
-          {#if form?.errors?.cost_per_kg_in_kr}
-            <span class="error-message">{form.errors.cost_per_kg_in_kr[0]}</span> 
+          {#if $errors.cost_per_kg_in_kr}
+            <span class="error-message">{$errors.cost_per_kg_in_kr[0]}</span> 
           {/if}
         </label>
       
@@ -226,12 +226,12 @@
           <input
             type="number"
             name="density_in_kg_per_cubic_meter"
-            bind:value={newMaterial.density_in_kg_per_cubic_meter}
+            bind:value={$form.density_in_kg_per_cubic_meter}
             step="any"
             placeholder="Ange densitet i kg per kubikmeter"
           />
-          {#if form?.errors?.density_in_kg_per_cubic_meter}
-            <span class="error-message">{form.errors.density_in_kg_per_cubic_meter[0]}</span>
+          {#if $errors.density_in_kg_per_cubic_meter}
+            <span class="error-message">{$errors.density_in_kg_per_cubic_meter[0]}</span>
           {/if}
         </label>
       
@@ -239,17 +239,17 @@
           <input 
             type="number"
             name="supplier_id"
-            bind:value={newMaterial.supplier_id}
+            bind:value={$form.supplier_id}
             placeholder="Ange leverantörens ID"
           />
-          {#if form?.errors?.supplier_id}
-            <span class="error-message">{form.errors.supplier_id[0]}</span> 
+          {#if $errors.supplier_id}
+            <span class="error-message">{$errors.supplier_id[0]}</span> 
           {/if}
         </label>
       
         <div class="button-group">
           <button type="submit">Lägg till material</button>
-          <button type="button" on:click={() => showAddMaterialForm = false}>Stäng</button>
+          <button type="button" onclick={() => showAddMaterialForm = false}>Stäng</button>
         </div>
       </form>
     </div>

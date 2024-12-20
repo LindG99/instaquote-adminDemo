@@ -1,5 +1,4 @@
 // place files you want to import through the `$lib` alias in this folder.
-
 import { z } from 'zod';
 
 //Schema for register new data
