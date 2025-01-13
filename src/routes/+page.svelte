@@ -1,9 +1,10 @@
 <script lang="ts">
 	import * as Form from '$lib/components/ui/form/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
-	import { materialSchema, materialWithIdSchema, type MaterialSchema } from '$lib';
+	import { materialSchema, materialWithIdSchema, type materialIdSchema } from '$lib';
 	import { superForm } from 'sveltekit-superforms';
 	import { zodClient } from 'sveltekit-superforms/adapters';
+	import { z } from 'zod';
 
 	let { data } = $props();
 
@@ -40,6 +41,45 @@
 		showAddMaterialForm = true;
 		isEditModalVisible = false;
 	};
+
+	type MaterialWithId = z.infer<typeof materialWithIdSchema>;
+	//Sort & Search
+	let sortBy: keyof MaterialWithId = $state('name'); //standardcolumn to sort by
+	let sortDirection = $state('asc'); //asc
+	let searchTerm = $state(''); // Search material
+	let materials: MaterialWithId[] = []; // Lista med material (ersätt med din verkliga data)
+
+	const sortMaterials = (materials: MaterialWithId[]) => {
+		return materials.slice().sort((a, b) => {
+			const valueA = a[sortBy];
+			const valueB = b[sortBy];
+
+			if (valueA < valueB) return sortDirection === 'asc' ? -1 : 1;
+			if (valueA > valueB) return sortDirection === 'asc' ? 1 : -1;
+			return 0;
+		});
+	};
+	const updateSort = (column: keyof MaterialWithId) => {
+		if (sortBy === column) {
+			// Byt sorteringsriktning om samma kolumn klickas
+			sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+		} else {
+			// Ändra sorteringskolumn och återställ riktning till asc
+			sortBy = column;
+			sortDirection = 'asc';
+		}
+	};
+	const filterMaterials = (materials: MaterialWithId[]) => {
+		return materials.filter((material) =>
+			material.name.toLowerCase().includes(searchTerm.toLowerCase())
+		);
+	};
+
+	// Kombinera sökning och sortering
+	const filteredAndSortedMaterials = () => {
+		const filtered = filterMaterials(data.materials);
+		return sortMaterials(filtered);
+	};
 </script>
 
 <!-- HTML for Dashboard material -->
@@ -47,25 +87,69 @@
 	<div class="dashboard">
 		<h1>Material Admin Dashboard</h1>
 
-		<!-- Search Box, no function yet -->
-		<div class="search-container">
-			<input type="text" placeholder="Sök efter material..." class="search-box" />
+		<!-- Sökfält -->
+		<div>
+			<input
+				type="text"
+				bind:value={searchTerm}
+				placeholder="Sök efter material..."
+				class="search-input"
+			/>
 		</div>
-
 		<!-- Material Table. -->
 		<table>
 			<thead>
 				<tr>
-					<th>Name</th>
-					<th>Type</th>
-					<th>Cost per kg (kr)</th>
-					<th>Density (kg/m³)</th>
-					<th>Supplier ID</th>
-					<th class="actions">Actions</th>
+					<th
+						onclick={() => updateSort('name')}
+						class={sortBy === 'name' ? 'sorted ' + sortDirection : ''}
+					>
+						Name
+						{#if sortBy === 'name'}
+							<span class="sort-direction">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+						{/if}
+					</th>
+					<th
+						onclick={() => updateSort('type')}
+						class={sortBy === 'type' ? 'sorted ' + sortDirection : ''}
+					>
+						Type
+						{#if sortBy === 'type'}
+							<span class="sort-direction">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+						{/if}
+					</th>
+					<th
+						onclick={() => updateSort('cost_per_kg_in_kr')}
+						class={sortBy === 'cost_per_kg_in_kr' ? 'sorted ' + sortDirection : ''}
+					>
+						Cost per kg (kr)
+						{#if sortBy === 'cost_per_kg_in_kr'}
+							<span class="sort-direction">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+						{/if}
+					</th>
+					<th
+						onclick={() => updateSort('density_in_kg_per_cubic_meter')}
+						class={sortBy === 'density_in_kg_per_cubic_meter' ? 'sorted ' + sortDirection : ''}
+					>
+						Density (kg/m³)
+						{#if sortBy === 'density_in_kg_per_cubic_meter'}
+							<span class="sort-direction">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+						{/if}
+					</th>
+					<th
+						onclick={() => updateSort('supplier_id')}
+						class={sortBy === 'supplier_id' ? 'sorted ' + sortDirection : ''}
+					>
+						Supplier ID
+						{#if sortBy === 'supplier_id'}
+							<span class="sort-direction">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+						{/if}
+					</th>
+					<th>Redigera / Ta bort</th>
 				</tr>
 			</thead>
 			<tbody>
-				{#each data.materials as material}
+				{#each filteredAndSortedMaterials() as material}
 					<tr>
 						<td>{material.name}</td>
 						<td>{material.type}</td>
@@ -75,7 +159,7 @@
 						<td class="actions">
 							<!-- Edit material button -->
 							<button class="btn edit-btn" onclick={() => openEditModal(material)}>Redigera</button>
-							<!-- Delete Material-->
+							<!-- Delete Material -->
 							<form method="POST" use:removeEnhance action="?/removeMaterial">
 								<input type="hidden" name="material_id" bind:value={material.material_id} />
 								<button class="btn delete-btn" type="submit">Ta bort</button>
@@ -276,7 +360,6 @@
 </div>
 
 <!-- CSS for Material Admin Dashboard -->
-<!-- Kan jag ta bort hela style??? -->
 <style>
 	.container {
 		max-width: 1500px;
@@ -292,9 +375,23 @@
 	}
 
 	h1 {
-		margin-bottom: 10px;
+		font-family: 'Arial', sans-serif;
+		font-size: 36px;
+		font-weight: 700;
+		color: #4a90e2;
 		text-align: center;
-		color: #333;
+		margin-top: 50px;
+		margin-bottom: 20px;
+		text-transform: uppercase;
+		letter-spacing: 2px;
+		background: linear-gradient(135deg, #4a90e2, #1d3557);
+		color: white;
+		padding: 20px;
+		border-radius: 8px;
+		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+		width: fit-content;
+		margin-left: auto;
+		margin-right: auto;
 	}
 
 	.search-container {
@@ -384,7 +481,70 @@
 			width: 100%;
 		}
 	}
+	th {
+		cursor: pointer;
+		padding: 10px;
+		text-align: left;
+	}
+	/* Show arrow while sorting */
+	.sorted {
+		font-weight: bold;
+	}
 
+	.sorted.asc::after {
+		content: ' ↑';
+	}
+
+	.sorted.desc::after {
+		content: ' ↓';
+	}
+
+	/* Hover-effect */
+	th:hover {
+		background-color: #f1f1f1;
+	}
+
+	/* Arrow for sorting */
+	.sort-direction {
+		font-size: 12px;
+		margin-left: 8px;
+	}
+	.search-input {
+		padding: 10px;
+		font-size: 16px;
+		width: 100%;
+		max-width: 400px;
+		margin-bottom: 20px;
+		border: 1px solid #ccc;
+		border-radius: 5px;
+	}
+
+	table {
+		width: 100%;
+		border-collapse: collapse;
+	}
+
+	th,
+	td {
+		padding: 10px;
+		text-align: left;
+	}
+
+	th {
+		cursor: pointer;
+	}
+
+	button {
+		background: none;
+		border: none;
+		font-size: inherit;
+		color: inherit;
+		cursor: pointer;
+	}
+
+	button:hover {
+		text-decoration: underline;
+	}
 	/* Delete / Edit buttons */
 	.btn {
 		background-color: #007bff;
