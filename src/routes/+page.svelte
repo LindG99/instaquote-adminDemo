@@ -47,7 +47,7 @@
 	let sortBy: keyof MaterialWithId = $state('name'); //standardcolumn to sort by
 	let sortDirection = $state('asc'); //asc
 	let searchTerm = $state(''); // Search material
-	let materials: MaterialWithId[] = []; // Lista med material (ersätt med din verkliga data)
+	let materials: MaterialWithId[] = [];
 
 	const sortMaterials = (materials: MaterialWithId[]) => {
 		return materials.slice().sort((a, b) => {
@@ -61,10 +61,8 @@
 	};
 	const updateSort = (column: keyof MaterialWithId) => {
 		if (sortBy === column) {
-			// Byt sorteringsriktning om samma kolumn klickas
 			sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
 		} else {
-			// Ändra sorteringskolumn och återställ riktning till asc
 			sortBy = column;
 			sortDirection = 'asc';
 		}
@@ -75,7 +73,6 @@
 		);
 	};
 
-	// Kombinera sökning och sortering
 	const filteredAndSortedMaterials = () => {
 		const filtered = filterMaterials(data.materials);
 		return sortMaterials(filtered);
@@ -173,7 +170,7 @@
 
 	<!-- Add new material button -->
 	<button class="add-btn" onclick={openAddMaterial}>Skapa nytt material</button>
-
+	<!-- Edit Material -->
 	{#if isEditModalVisible}
 		<!-- Edit material -->
 		<div class="form-container">
