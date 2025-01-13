@@ -1,5 +1,5 @@
 import { materialIdSchema, materialSchema, materialWithIdSchema } from '$lib';
-import { superForm, superValidate, message } from 'sveltekit-superforms';
+import { superValidate, message } from 'sveltekit-superforms';
 import type { Actions, PageServerLoad } from './$types';
 import { zod } from 'sveltekit-superforms/adapters';
 import { fail } from '@sveltejs/kit';
@@ -67,7 +67,7 @@ export const actions: Actions = {
 		
 		const { material_id } = removeForm.data;
 		try {
-			// Ta bort material från databasen
+			//Remove material from board
 			const { error } = await supabase
 				.from('material')
 				.delete()
